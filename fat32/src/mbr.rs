@@ -1,23 +1,42 @@
-use std::{fmt, io};
+use std::{fmt, io, mem};
 
 use traits::BlockDevice;
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct CHS {
-    // FIXME: Fill me in.
+    head: u8, // head
+    sector_and_cylinder: u16, // sector (Bits 6-7 are the upper two bits for the Starting Cylinder field.) and Cylinder
+}
+
+impl fmt::Debug for CHS {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("CHS")
+            .field("head", &self.head)
+            .field("sector", &(self.sector_and_cylinder & (0b11111 << 6)))
+            .field("cylinder", &(self.sector_and_cylinder >> 6))
+            .finish()
+    }
 }
 
 #[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct PartitionEntry {
-    // FIXME: Fill me in.
+    boot_indicator: u8, // Boot indicator bit flag: 0 = no, 0x80 = bootable (or "active")
+    starting_chs: CHS,
+    partition_type: u8, // Partition Type (0xB or 0xC for FAT32).
+    ending_chs: CHS,
+    relative_sector: u32, // Relative Sector (offset, in sectors, from start of disk to start of the partition)
+    total_sectors: u32, // Total Sectors in partition
 }
 
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
-    // FIXME: Fill me in.
+    bootstrap: [u8; 436], //MBR Bootstrap (flat binary executable code)
+    disk_id: [u8; 10], // Optional "unique" disk ID
+    partition_table: [PartitionEntry; 4], // MBR Partition Table
+    signature: [u8; 2], // (0x55, 0xAA) "Valid bootsector" signature byte
 }
 
 #[derive(Debug)]
@@ -40,12 +59,34 @@ impl MasterBootRecord {
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
     pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
-        unimplemented!("MasterBootRecord::from()")
+        let mut buf = [0u8; 512];
+        if device.read_sector(0, &mut buf).map_err(|e| Error::Io(e))? != 512 {
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Got less than 512 bytes when reading MBR.",
+            )));
+        }
+        let mbr = unsafe { mem::transmute::<[u8; 512], MasterBootRecord>(buf) };
+        if mbr.signature != [0x55, 0xAA] {
+            return Err(Error::BadSignature);
+        }
+        for (index, partition_entry) in mbr.partition_table.iter().enumerate() {
+            match partition_entry.boot_indicator {
+                0x0 | 0x80 => (),
+                _ => return Err(Error::UnknownBootIndicator(index as u8)),
+            }
+        }
+        Ok(mbr)
     }
 }
 
 impl fmt::Debug for MasterBootRecord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!("MasterBootRecord::fmt()")
+        f.debug_struct("MasterBootRecord")
+            .field("bootstrap", &String::from("<ellipsis>"))
+            .field("disk_id", &self.disk_id)
+            .field("partition_table", &self.partition_table)
+            .field("signature", &self.signature)
+            .finish()
     }
 }
