@@ -1,0 +1,1 @@
+It guarantees that as long as the inner implementation is correct, the outer access is not easy to be wrong. End-user won't worry a lot about whether they carelessly make an uncaught bug that will crash the whole program at runtime. The compiler together with its type-safety mechanisms will detect most of careless mistakes in end-users' code.

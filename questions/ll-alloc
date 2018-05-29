@@ -1,0 +1,1 @@
+An intrusive linked list does not need addtional memory, while the later needs. Once additional memory is needed, a new problem of where and how to allocate such memory is arised, which is going to be a self-referential paradox. 

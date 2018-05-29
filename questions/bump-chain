@@ -1,0 +1,7 @@
+`Vec::push`
+// continue only if `Vec.buf` is full
+`Vec.buf.double` -> `RawVec::double`
+`Alloc::realloc`
+`Alloc::alloc` -> `kernel::allocator::Allocator.alloc`
+`imp::Allocator.alloc` -> `kernel::allocator::bump::Allocator:alloc`
+
