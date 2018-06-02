@@ -1,4 +1,4 @@
-use std::{io, fmt};
+use std::{io, fmt, cmp};
 use std::collections::HashMap;
 
 use traits::BlockDevice;
@@ -6,20 +6,20 @@ use traits::BlockDevice;
 #[derive(Debug)]
 struct CacheEntry {
     data: Vec<u8>,
-    dirty: bool
+    dirty: bool,
 }
 
 pub struct Partition {
     /// The physical sector where the partition begins.
     pub start: u64,
     /// The size, in bytes, of a logical sector in the partition.
-    pub sector_size: u64
+    pub sector_size: u64,
 }
 
 pub struct CachedDevice {
     device: Box<BlockDevice>,
     cache: HashMap<u64, CacheEntry>,
-    partition: Partition
+    partition: Partition,
 }
 
 impl CachedDevice {
@@ -43,14 +43,15 @@ impl CachedDevice {
     ///
     /// Panics if the partition's sector size is < the device's sector size.
     pub fn new<T>(device: T, partition: Partition) -> CachedDevice
-        where T: BlockDevice + 'static
+    where
+        T: BlockDevice + 'static,
     {
         assert!(partition.sector_size >= device.sector_size());
 
         CachedDevice {
             device: Box::new(device),
             cache: HashMap::new(),
-            partition: partition
+            partition: partition,
         }
     }
 
@@ -70,6 +71,35 @@ impl CachedDevice {
         }
     }
 
+
+    fn reload_sector(&mut self, sector: u64) -> io::Result<Option<CacheEntry>> {
+        let mut cached_sector = Vec::with_capacity(self.partition.sector_size as usize);
+        let (physical_sector, number) = self.virtual_to_physical(sector);
+        for i in 0..number {
+            let s = (number * self.device.sector_size()) as usize;
+            let e = ((number + 1) * self.device.sector_size()) as usize;
+            self.device.read_sector(
+                physical_sector + i,
+                &mut cached_sector[s..e],
+            )?;
+        }
+        Ok(self.cache.insert(
+            sector,
+            CacheEntry {
+                data: cached_sector,
+                dirty: true,
+            },
+        ))
+    }
+
+    #[inline(always)]
+    fn ensure_cached(&mut self, sector: u64) -> io::Result<()> {
+        if !self.cache.contains_key(&sector) {
+            self.reload_sector(sector)?;
+        } 
+        Ok(())
+    }
+
     /// Returns a mutable reference to the cached sector `sector`. If the sector
     /// is not already cached, the sector is first read from the disk.
     ///
@@ -81,7 +111,8 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get_mut(&mut self, sector: u64) -> io::Result<&mut [u8]> {
-        unimplemented!("CachedDevice::get_mut()")
+        self.ensure_cached(sector)?; // 🌶🐔 lifetime check
+        Ok(self.cache.get_mut(&sector).unwrap().data.as_mut())
     }
 
     /// Returns a reference to the cached sector `sector`. If the sector is not
@@ -91,12 +122,35 @@ impl CachedDevice {
     ///
     /// Returns an error if there is an error reading the sector from the disk.
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
-        unimplemented!("CachedDevice::get()")
+        self.ensure_cached(sector)?;
+        Ok(self.cache.get(&sector).unwrap().data.as_ref())
     }
 }
 
 // FIXME: Implement `BlockDevice` for `CacheDevice`. The `read_sector` and
 // `write_sector` methods should only read/write from/to cached sectors.
+
+impl BlockDevice for CachedDevice {
+    #[inline(always)]
+    fn sector_size(&self) -> u64 {
+        self.partition.sector_size
+    }
+
+    fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
+        let len = cmp::min(self.sector_size() as usize, buf.len());
+        buf[..len].copy_from_slice(&self.get(n)?[..len]);
+        Ok(len)
+    }
+
+    fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() < self.sector_size() as usize { // TODO: ???
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Buffer to small to write."))
+        }
+        let len = self.sector_size() as usize;
+        self.get_mut(n)?[..len].copy_from_slice(&buf[..len]);
+        Ok(len)
+    }
+}
 
 impl fmt::Debug for CachedDevice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
