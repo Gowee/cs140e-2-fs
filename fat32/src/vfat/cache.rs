@@ -131,11 +131,6 @@ impl CachedDevice {
 // `write_sector` methods should only read/write from/to cached sectors.
 
 impl BlockDevice for CachedDevice {
-    #[inline(always)]
-    fn sector_size(&self) -> u64 {
-        self.partition.sector_size
-    }
-
     fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
         let len = cmp::min(self.sector_size() as usize, buf.len());
         buf[..len].copy_from_slice(&self.get(n)?[..len]);
