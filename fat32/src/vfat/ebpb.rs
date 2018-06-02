@@ -1,4 +1,4 @@
-use std::{io, fmt, mem};
+use std::{io, fmt, mem, str};
 
 use traits::BlockDevice;
 use vfat::Error;
@@ -67,7 +67,7 @@ impl fmt::Debug for BiosParameterBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BiosParameterBlock")
             .field("first_three", &self.first_three)
-            .field("oem_identifier", &self.oem_identifier)
+            .field("oem_identifier", &str::from_utf8(&self.oem_identifier).unwrap_or("INVALID_TEXT"))
             .field("bytes_per_sector", &self.bytes_per_sector)
             .field("sectors_per_cluster", &self.sectors_per_cluster)
             .field("number_of_reserved_sectors", &self.number_of_reserved_sectors)
@@ -91,8 +91,8 @@ impl fmt::Debug for BiosParameterBlock {
             .field("flags_winnt", &self.flags_winnt)
             .field("signature", &self.signature)
             .field("volume_id_serial_no", &self.volume_id_serial_no)
-            .field("volume_label_string", &self.volume_label_string)
-            .field("system_identifier_string", &self.system_identifier_string)
+            .field("volume_label_string", &str::from_utf8(&self.volume_label_string).unwrap_or("INVALID_TEXT"))
+            .field("system_identifier_string", &str::from_utf8(&self.system_identifier_string).unwrap_or("INVALID_TEXT"))
             // .field("boot_code", &self.boot_code)
             .field("bootable_partition_signature", &self.bootable_partition_signature)
             .finish()
