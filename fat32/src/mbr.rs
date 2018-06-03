@@ -22,20 +22,20 @@ impl fmt::Debug for CHS {
 #[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct PartitionEntry {
-    boot_indicator: u8, // Boot indicator bit flag: 0 = no, 0x80 = bootable (or "active")
+    pub boot_indicator: u8, // Boot indicator bit flag: 0 = no, 0x80 = bootable (or "active")
     starting_chs: CHS,
-    partition_type: u8, // Partition Type (0xB or 0xC for FAT32).
+    pub partition_type: u8, // Partition Type (0xB or 0xC for FAT32).
     ending_chs: CHS,
-    relative_sector: u32, // Relative Sector (offset, in sectors, from start of disk to start of the partition)
-    total_sectors: u32, // Total Sectors in partition
+    pub relative_sector: u32, // Relative Sector (offset, in sectors, from start of disk to start of the partition)
+    pub total_sectors: u32, // Total Sectors in partition
 }
 
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
     bootstrap: [u8; 436], //MBR Bootstrap (flat binary executable code)
-    disk_id: [u8; 10], // Optional "unique" disk ID
-    partition_table: [PartitionEntry; 4], // MBR Partition Table
+    pub disk_id: [u8; 10], // Optional "unique" disk ID
+    pub partition_table: [PartitionEntry; 4], // MBR Partition Table
     signature: [u8; 2], // (0x55, 0xAA) "Valid bootsector" signature byte
 }
 
@@ -77,6 +77,19 @@ impl MasterBootRecord {
             }
         }
         Ok(mbr)
+    }
+
+    pub fn first_fat32_partition(&self) -> Option<&PartitionEntry> {
+        self.first_partition_of(&[0xB, 0xC])
+    }
+
+    pub fn first_partition_of(&self, partition_type: &[u8]) -> Option<&PartitionEntry> {
+        for entry in self.partition_table.iter() {
+            if partition_type.contains(&entry.partition_type) {
+                return Some(entry);
+            }
+        }
+        return None;
     }
 }
 
