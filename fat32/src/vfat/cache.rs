@@ -132,18 +132,18 @@ impl CachedDevice {
 
 impl BlockDevice for CachedDevice {
     fn read_sector(&mut self, n: u64, buf: &mut [u8]) -> io::Result<usize> {
-        let len = cmp::min(self.sector_size() as usize, buf.len());
+        let len = cmp::min(self.partition.sector_size as usize, buf.len());
         buf[..len].copy_from_slice(&self.get(n)?[..len]);
         Ok(len)
     }
 
     fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < self.sector_size() as usize { // TODO: ???
-            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Buffer to small to write."))
+        let sector_size = self.partition.sector_size as usize;
+        if buf.len() != sector_size { // TODO: ???
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Buffer should match sector size."))
         }
-        let len = self.sector_size() as usize;
-        self.get_mut(n)?[..len].copy_from_slice(&buf[..len]);
-        Ok(len)
+        self.get_mut(n)?[..sector_size].copy_from_slice(&buf[..sector_size]);
+        Ok(sector_size)
     }
 }
 

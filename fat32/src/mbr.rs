@@ -22,20 +22,26 @@ impl fmt::Debug for CHS {
 #[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct PartitionEntry {
-    pub boot_indicator: u8, // Boot indicator bit flag: 0 = no, 0x80 = bootable (or "active")
+    /// Boot indicator bit flag: 0 = no, 0x80 = bootable (or "active")
+    pub boot_indicator: u8,
     starting_chs: CHS,
-    pub partition_type: u8, // Partition Type (0xB or 0xC for FAT32).
+    /// Partition Type (0xB or 0xC for FAT32).
+    pub partition_type: u8,
     ending_chs: CHS,
-    pub relative_sector: u32, // Relative Sector (offset, in sectors, from start of disk to start of the partition)
-    pub total_sectors: u32, // Total Sectors in partition
+    /// Relative Sector (offset, in sectors, from start of disk to start of the partition)
+    pub relative_sector: u32,
+    /// Total Sectors in partition
+    pub total_sectors: u32,
 }
 
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
     bootstrap: [u8; 436], //MBR Bootstrap (flat binary executable code)
-    pub disk_id: [u8; 10], // Optional "unique" disk ID
-    pub partition_table: [PartitionEntry; 4], // MBR Partition Table
+    /// Optional "unique" disk ID
+    pub disk_id: [u8; 10],
+    /// MBR Partition Table
+    pub partition_table: [PartitionEntry; 4],
     signature: [u8; 2], // (0x55, 0xAA) "Valid bootsector" signature byte
 }
 

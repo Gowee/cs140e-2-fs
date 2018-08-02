@@ -1,0 +1,4 @@
+0xFFFFFEF - 0x2 + 1 = 0xFFFFFEE
+
+No. For FAT16, the FAT entry is 16-bits wide.
+

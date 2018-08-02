@@ -1,0 +1,1 @@
+Offset 28 (length: 4) of a Regular Directory Entry records the size of a file. So the maximum file size is 2**(4 * 8) = 4 GiB.

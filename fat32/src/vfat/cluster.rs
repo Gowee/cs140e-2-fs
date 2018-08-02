@@ -9,4 +9,10 @@ impl From<u32> for Cluster {
     }
 }
 
+impl Cluster {
+    pub fn inner(&self) -> u32 {
+        self.0
+    }
+}
+
 // TODO: Implement any useful helper methods on `Cluster`.
