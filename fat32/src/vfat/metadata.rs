@@ -28,9 +28,9 @@ pub struct Timestamp {
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
     pub attributes: Attributes,
-    created_time: Timestamp,
-    accessed_time: Timestamp,
-    modified_time: Timestamp,
+    pub created_time: Timestamp,
+    pub accessed_time: Timestamp,
+    pub modified_time: Timestamp,
 }
 
 impl From<u16> for Date {

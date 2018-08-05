@@ -14,8 +14,19 @@ use vfat::{Cluster, Entry, File, Shared, VFat};
 pub struct Dir {
     pub name: String,
     pub metadata: Metadata,
-    pub(super) first_cluster: Cluster,
-    pub(super) vfat: Shared<VFat>,
+    first_cluster: Cluster,
+    vfat: Shared<VFat>,
+}
+
+impl Dir {
+    fn new(name: String, metadata: Metadata, first_cluster: Cluster, vfat: Shared<VFat>) -> Dir {
+        Dir {
+            name,
+            metadata,
+            first_cluster,
+            vfat,
+        }
+    }
 }
 
 #[repr(C, packed)]
@@ -119,13 +130,14 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        match name.as_ref().to_str {
+        use traits::{Dir, Entry};
+        match name.as_ref().to_str() {
             None => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "File name contains non unicode charaters.",
             )),
             Some(name) => {
-                for entry in self.entries() {
+                for entry in self.entries()? {
                     if entry.name().eq_ignore_ascii_case(name) {
                         return Ok(entry);
                     }
@@ -148,14 +160,12 @@ impl traits::Dir for Dir {
 
     /// Returns an interator over the entries in this directory.
     fn entries(&self) -> io::Result<Self::Iter> {
-        let buf = Vec::new();
-        self.vfat.borrow().read_chain(self.first_cluster, &mut buf);
+        let mut buf = Vec::new();
+        self.vfat
+            .borrow_mut()
+            .read_chain(self.first_cluster, &mut buf)?;
         let raw_entries: Vec<VFatDirEntry> = unsafe { buf.cast() }; // TODO: works or not?
-        Ok(EntryIter {
-            raw_entries: raw_entries.into_iter(),
-            vfat: self.vfat.clone(),
-            lfn: None,
-        })
+        Ok(EntryIter::new(raw_entries.into_iter(), self.vfat.clone()))
     }
 }
 
@@ -192,7 +202,7 @@ impl iter::Iterator for EntryIter {
                             panic!("Unexpected sequence number: {}.", seq_num);
                         }
                         let entry = unsafe { raw_entry.long_filename };
-                        let lfn = self.lfn.get_or_insert([[0x00; 26]; 0x1F])[seq_num as usize];
+                        let mut lfn = self.lfn.get_or_insert([[0x00; 26]; 0x1F])[seq_num as usize];
                         lfn[0..10].copy_from_slice(&entry.name_characters_1);
                         lfn[10..22].copy_from_slice(&entry.name_characters_2);
                         lfn[22..26].copy_from_slice(&entry.name_characters_3);
@@ -213,25 +223,24 @@ impl iter::Iterator for EntryIter {
                             }
                         };
                         self.lfn = None; // clear lfn
-                        file_name.push_str({
-                            let name: Vec<u8> = entry
-                                .name
-                                .iter()
-                                .map(|c| *c)
-                                .take_while(|&c| c != 0x00 && c != 0x20)
-                                .collect();
-                            &String::from_utf8_lossy(&name)
-                        });
-                        file_name.push_str(".");
-                        file_name.push_str({
-                            let extension: Vec<u8> = entry
-                                .extension
-                                .iter()
-                                .map(|c| *c)
-                                .take_while(|&c| c != 0x00 && c != 0x20)
-                                .collect();
-                            &String::from_utf8_lossy(&extension)
-                        });
+
+                        let name: Vec<u8> = entry
+                            .name
+                            .iter()
+                            .map(|c| *c)
+                            .take_while(|&c| c != 0x00 && c != 0x20)
+                            .collect();
+                        file_name.push_str(&String::from_utf8_lossy(&name));
+                        let extension: Vec<u8> = entry
+                            .extension
+                            .iter()
+                            .map(|c| *c)
+                            .take_while(|&c| c != 0x00 && c != 0x20)
+                            .collect();
+                        if !extension.is_empty() {
+                            file_name.push_str(".");
+                        }
+                        file_name.push_str({ &String::from_utf8_lossy(&extension) });
 
                         let metadata = Metadata {
                             attributes: entry.attributes,
@@ -244,19 +253,20 @@ impl iter::Iterator for EntryIter {
                             | entry.first_cluster_lower_bits as u32)
                             .into();
                         Some(if metadata.attributes.directory() {
-                            Entry::Dir(Dir {
-                                name: file_name,
-                                metadata: metadata,
-                                first_cluster: first_cluster,
-                                vfat: self.vfat.clone(),
-                            })
+                            Entry::Dir(Dir::new(
+                                file_name,
+                                metadata,
+                                first_cluster,
+                                self.vfat.clone(),
+                            ))
                         } else {
-                            Entry::File(File {
-                                name: file_name,
-                                metadata: metadata,
-                                first_cluster: first_cluster,
-                                vfat: self.vfat.clone(),
-                            })
+                            Entry::File(File::new(
+                                file_name,
+                                metadata,
+                                entry.size,
+                                first_cluster,
+                                self.vfat.clone(),
+                            ))
                         })
                     }
                 }

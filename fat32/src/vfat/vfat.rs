@@ -56,7 +56,7 @@ impl VFat {
     }
 
     #[inline(always)]
-    fn cluster_size(&self) -> usize {
+    pub fn cluster_size(&self) -> usize {
         self.sectors_per_cluster as usize * self.bytes_per_sector as usize
     }
 
@@ -64,7 +64,7 @@ impl VFat {
     //
     ///  * A method to read from an offset of a cluster into a buffer.
 
-    fn read_cluster(
+    pub fn read_cluster(
         &mut self,
         cluster: Cluster,
         offset: usize,
@@ -93,7 +93,7 @@ impl VFat {
         );
 
         while index < total {
-            self.device.read_sector(nsector, &mut buf[index..])?;
+            index += self.device.read_sector(nsector, &mut buf[index..])?;
         }
         Ok(total)
     }
