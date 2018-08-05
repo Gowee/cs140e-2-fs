@@ -16,7 +16,7 @@ pub enum Status {
     Bad,
     /// The FAT entry corresponds to a valid data cluster. The corresponding
     /// cluster is the last in its chain.
-    Eoc(u32)
+    Eoc(u32),
 }
 
 #[repr(C, packed)]
@@ -29,13 +29,11 @@ impl FatEntry {
         match self.0 & !(0xF << 28) { // ignore the upper 4 digits
             0x0000000 => Free,
             0x0000001 => Reserved,
-            v @ 0x0000002...0xFFFFFEF => {
-                Data(v.into())
-            },
+            v @ 0x0000002...0xFFFFFEF => Data(v.into()),
             0xFFFFFF0...0xFFFFFF6 => Reserved,
             0xFFFFFF7 => Bad,
             v @ 0xFFFFFF8 => Eoc(v),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

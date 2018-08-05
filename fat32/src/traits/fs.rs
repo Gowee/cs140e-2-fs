@@ -98,9 +98,10 @@ pub trait FileSystem: Sized {
     /// In addition to the error conditions for `open()`, this method returns an
     /// error kind of `Other` if the entry at `path` is not a regular file.
     fn open_file<P: AsRef<Path>>(self, path: P) -> io::Result<Self::File> {
-        self.open(path)?
-            .into_file()
-            .ok_or(io::Error::new(io::ErrorKind::Other, "not a regular file"))
+        self.open(path)?.into_file().ok_or(io::Error::new(
+            io::ErrorKind::Other,
+            "not a regular file",
+        ))
     }
 
     /// Opens the directory at `path`. `path` must be absolute.
@@ -110,9 +111,10 @@ pub trait FileSystem: Sized {
     /// In addition to the error conditions for `open()`, this method returns an
     /// error kind of `Other` if the entry at `path` is not a directory.
     fn open_dir<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Dir> {
-        self.open(path)?
-            .into_dir()
-            .ok_or(io::Error::new(io::ErrorKind::Other, "not a directory"))
+        self.open(path)?.into_dir().ok_or(io::Error::new(
+            io::ErrorKind::Other,
+            "not a directory",
+        ))
     }
 
     /// Creates a new file at `path`, opens it, and returns it.

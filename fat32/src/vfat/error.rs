@@ -7,7 +7,7 @@ pub enum Error {
     Mbr(mbr::Error),
     Io(io::Error),
     BadSignature,
-    NotFound
+    NotFound,
 }
 
 impl From<mbr::Error> for Error {

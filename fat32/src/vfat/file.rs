@@ -6,10 +6,16 @@ use vfat::{VFat, Shared, Cluster, Metadata};
 
 #[derive(Debug)]
 pub struct File {
-    // FIXME: Fill me in.
+    pub name: String,
+    pub metadata: Metadata,
+    pub(super) first_cluster: Cluster,
+    pub(super) vfat: Shared<VFat>
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.
+impl traits::File for File {
+    unimplemented!();
+}
 
 impl io::Seek for File {
     /// Seek to offset `pos` in the file.

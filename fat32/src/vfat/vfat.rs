@@ -47,8 +47,8 @@ impl VFat {
             sectors_per_cluster: spc,
             sectors_per_fat: spf,
             fat_start_sector: fss,
-            data_start_sector: fss as u64
-                + bpb.number_of_fats as u64 * bpb.number_of_sectors_per_fat as u64,
+            data_start_sector: fss as u64 +
+                bpb.number_of_fats as u64 * bpb.number_of_sectors_per_fat as u64,
             root_dir_cluster: rdc,
         };
         // println!("{:#?}", vfat);
@@ -71,11 +71,14 @@ impl VFat {
         buf: &mut [u8],
     ) -> io::Result<usize> {
         if self.fat_entry(cluster)?.status() == Status::Bad {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Cluster is bad."));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Cluster is bad.",
+            ));
         }
-        let mut nsector = self.data_start_sector
-            + (cluster.inner() as u64 - 2) * self.sectors_per_cluster as u64
-            + offset as u64 / self.bytes_per_sector as u64;
+        let mut nsector = self.data_start_sector +
+            (cluster.inner() as u64 - 2) * self.sectors_per_cluster as u64 +
+            offset as u64 / self.bytes_per_sector as u64;
         let mut index = {
             let sector = self.device.get(nsector)?;
             let offset_in_sector = offset % self.bytes_per_sector as usize;
@@ -98,7 +101,7 @@ impl VFat {
     ///  * A method to read all of the clusters chained from a starting cluster
     ///    into a vector.
     ///
-    fn read_chain(&mut self, start: Cluster, buf: &mut Vec<u8>) -> io::Result<usize> {
+    pub fn read_chain(&mut self, start: Cluster, buf: &mut Vec<u8>) -> io::Result<usize> {
         let mut cluster = Some(start);
         let mut index = 0;
         while cluster.is_some() {

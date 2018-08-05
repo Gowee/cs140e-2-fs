@@ -120,8 +120,12 @@ fn test_ebpb() {
     let mut ebpb2 = resource!("ebpb2.img");
 
     let mut data = [0u8; 1024];
-    ebpb1.read_exact(&mut data[..512]).expect("read resource data");
-    ebpb2.read_exact(&mut data[512..]).expect("read resource data");
+    ebpb1.read_exact(&mut data[..512]).expect(
+        "read resource data",
+    );
+    ebpb2.read_exact(&mut data[512..]).expect(
+        "read resource data",
+    );
 
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 0).expect("valid EBPB");
     BiosParameterBlock::from(Cursor::new(&mut data[..]), 1).expect("valid EBPB");
@@ -147,12 +151,24 @@ fn hash_entry<T: Entry>(hash: &mut String, entry: &T) -> ::std::fmt::Result {
     use std::fmt::Write;
 
     fn write_bool(to: &mut String, b: bool, c: char) -> ::std::fmt::Result {
-        if b { write!(to, "{}", c) } else { write!(to, "-") }
+        if b {
+            write!(to, "{}", c)
+        } else {
+            write!(to, "-")
+        }
     }
 
     fn write_timestamp<T: Timestamp>(to: &mut String, ts: T) -> ::std::fmt::Result {
-        write!(to, "{:02}/{:02}/{} {:02}:{:02}:{:02} ",
-               ts.month(), ts.day(), ts.year(), ts.hour(), ts.minute(), ts.second())
+        write!(
+            to,
+            "{:02}/{:02}/{} {:02}:{:02}:{:02} ",
+            ts.month(),
+            ts.day(),
+            ts.year(),
+            ts.hour(),
+            ts.minute(),
+            ts.second()
+        )
     }
 
     write_bool(hash, entry.is_dir(), 'd')?;
@@ -170,16 +186,14 @@ fn hash_entry<T: Entry>(hash: &mut String, entry: &T) -> ::std::fmt::Result {
     Ok(())
 }
 
-fn hash_dir<T: Dir>(
-    hash: &mut String, dir: T
-) -> Result<Vec<T::Entry>, ::std::fmt::Error> {
-    let mut entries: Vec<_> = dir.entries()
-        .expect("entries interator")
-        .collect();
+fn hash_dir<T: Dir>(hash: &mut String, dir: T) -> Result<Vec<T::Entry>, ::std::fmt::Error> {
+    let mut entries: Vec<_> = dir.entries().expect("entries interator").collect();
 
     entries.sort_by(|a, b| a.name().cmp(b.name()));
     for (i, entry) in entries.iter().enumerate() {
-        if i != 0 { hash.push('\n'); }
+        if i != 0 {
+            hash.push('\n');
+        }
         hash_entry(hash, entry)?;
     }
 
@@ -210,7 +224,7 @@ fn test_root_entries() {
 fn hash_dir_recursive<P: AsRef<Path>>(
     hash: &mut String,
     vfat: Shared<VFat>,
-    path: P
+    path: P,
 ) -> ::std::fmt::Result {
     use std::fmt::Write;
 
@@ -273,12 +287,17 @@ fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
                 hasher.write(&buffer[..n]);
                 bytes_read += n as u64;
             }
-            Err(e) => panic!("failed to read file: {:?}", e)
+            Err(e) => panic!("failed to read file: {:?}", e),
         }
     }
 
-    assert_eq!(bytes_read, file.size(),
-        "expected to read {} bytes (file size) but read {}", file.size(), bytes_read);
+    assert_eq!(
+        bytes_read,
+        file.size(),
+        "expected to read {} bytes (file size) but read {}",
+        file.size(),
+        bytes_read
+    );
 
     write!(hash, "{}", hasher.finish())
 }
@@ -286,7 +305,7 @@ fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
 fn hash_files_recursive<P: AsRef<Path>>(
     hash: &mut String,
     vfat: Shared<VFat>,
-    path: P
+    path: P,
 ) -> ::std::fmt::Result {
     let path = path.as_ref();
     let mut entries = vfat.open_dir(path)
@@ -346,6 +365,6 @@ fn test_mock4_files_recursive() {
 
 #[test]
 fn shared_fs_is_sync_send_static() {
-    fn f<T: Sync + Send + 'static>() {  }
+    fn f<T: Sync + Send + 'static>() {}
     f::<Shared<VFat>>();
 }

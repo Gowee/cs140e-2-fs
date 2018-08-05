@@ -33,6 +33,33 @@ pub struct Metadata {
     modified_time: Timestamp,
 }
 
+impl From<u16> for Date {
+    fn from(raw: u16) -> Date {
+        Date(raw)
+    }
+}
+
+impl From<u16> for Time {
+    fn from(raw: u16) -> Time {
+        Time(raw)
+    } 
+}
+
+impl From<(Date, Time)> for Timestamp {
+    fn from(date_time: (Date, Time)) -> Timestamp {
+        Timestamp {
+            date: date_time.0,
+            time: date_time.1
+        }
+    }
+}
+
+impl From<u8> for Attributes {
+    fn from(raw: u8) -> Attributes {
+        Attributes(raw)
+    } 
+}
+
 impl traits::Timestamp for Timestamp {
     /// The calendar year.
     ///
@@ -170,7 +197,9 @@ impl fmt::Display for Metadata {
         write!(
             f,
             "\nctime: {}\natime: {}\nmtime: {}",
-            self.created_time, self.accessed_time, self.modified_time
+            self.created_time,
+            self.accessed_time,
+            self.modified_time
         )
     }
 }

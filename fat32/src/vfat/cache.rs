@@ -96,7 +96,7 @@ impl CachedDevice {
     fn ensure_cached(&mut self, sector: u64) -> io::Result<()> {
         if !self.cache.contains_key(&sector) {
             self.reload_sector(sector)?;
-        } 
+        }
         Ok(())
     }
 
@@ -139,8 +139,12 @@ impl BlockDevice for CachedDevice {
 
     fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
         let sector_size = self.partition.sector_size as usize;
-        if buf.len() != sector_size { // TODO: ???
-            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Buffer should match sector size."))
+        if buf.len() != sector_size {
+            // TODO: ???
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Buffer should match sector size.",
+            ));
         }
         self.get_mut(n)?[..sector_size].copy_from_slice(&buf[..sector_size]);
         Ok(sector_size)
