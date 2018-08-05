@@ -32,7 +32,7 @@ impl FatEntry {
             v @ 0x0000002...0xFFFFFEF => Data(v.into()),
             0xFFFFFF0...0xFFFFFF6 => Reserved,
             0xFFFFFF7 => Bad,
-            v @ 0xFFFFFF8 => Eoc(v),
+            v @ 0xFFFFFF8...0xFFFFFFF => Eoc(v),
             _ => unreachable!(),
         }
     }

@@ -115,7 +115,7 @@ impl VFat {
                     ))
                 }
             };
-
+            buf.resize(index + self.cluster_size(), 0);
             index += self.read_cluster(cluster.unwrap(), 0, &mut buf[index..])?;
             cluster = next;
         }

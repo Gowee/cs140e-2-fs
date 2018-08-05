@@ -96,7 +96,7 @@ pub struct VFatLfnDirEntry {
     /// A file name may be terminated early using 0x00 or 0xFF characters.
     name_characters_1: [u8; 10],
     /// Attributes (always 0x0F). Used to determine if a directory entry is an LFN entry.
-    attributes: u8,
+    attributes: Attributes,
     /// Type
     /// (always 0x00 for VFAT LFN, other values reserved for future use;
     /// for special usage of bits 4 and 3 in SFNs see further up)
@@ -118,7 +118,7 @@ pub struct VFatLfnDirEntry {
 pub struct VFatUnknownDirEntry {
     seq_num: u8,
     __r0: [u8; 10],
-    attributes: u8,
+    attributes: Attributes,
     __r1: [u8; 20],
 }
 
@@ -205,7 +205,7 @@ impl iter::Iterator for EntryIter {
                 0x00 => None,        // the previous entry was the last entry
                 0xE5 => self.next(), // this is a deleted/unused entry; TODO: should lfn be cleared?
                 seq_num => {
-                    if entry.attributes == 0x0F {
+                    if entry.attributes.lfn() {
                         // VFatLfnDirEntry
                         if !(seq_num >= 0x01 && seq_num <= 0x1F) {
                             // invalid seq_num

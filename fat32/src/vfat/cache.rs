@@ -73,11 +73,11 @@ impl CachedDevice {
 
 
     fn reload_sector(&mut self, sector: u64) -> io::Result<Option<CacheEntry>> {
-        let mut cached_sector = Vec::with_capacity(self.partition.sector_size as usize);
+        let mut cached_sector = vec![0u8; self.partition.sector_size as usize];
         let (physical_sector, number) = self.virtual_to_physical(sector);
         for i in 0..number {
-            let s = (number * self.device.sector_size()) as usize;
-            let e = ((number + 1) * self.device.sector_size()) as usize;
+            let s = (i * self.device.sector_size()) as usize;
+            let e = ((i + 1) * self.device.sector_size()) as usize;
             self.device.read_sector(
                 physical_sector + i,
                 &mut cached_sector[s..e],
