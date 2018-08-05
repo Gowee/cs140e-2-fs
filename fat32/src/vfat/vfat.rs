@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::io;
 use std::mem::size_of;
-use std::path::Path;
+use std::path::{Path, Component};
 
 use mbr::MasterBootRecord;
 use traits::{BlockDevice, FileSystem};
@@ -17,7 +17,7 @@ pub struct VFat {
     sectors_per_fat: u32,
     fat_start_sector: u64,
     data_start_sector: u64,
-    root_dir_cluster: Cluster,
+    pub(super) root_dir_cluster: Cluster,
 }
 
 impl VFat {
@@ -143,12 +143,54 @@ impl VFat {
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {
-    type File = ::traits::Dummy;
-    type Dir = ::traits::Dummy;
-    type Entry = ::traits::Dummy;
+    type File = File;
+    type Dir = Dir;
+    type Entry = Entry;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        // `canonicalize` is unavailable in the suppied std
+        // let canon_path = path.as_ref().canonicalize()?;
+        // let mut componenets = canon_path.as_path().components();
+        let mut components = path.as_ref().components();
+        if components.next() != Some(Component::RootDir) {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "File path should start from root."));
+        }
+        let mut current_dir = Dir::root_from_vfat(self.clone());
+        let mut target_file = None;
+        let mut component;
+        let mut broken = false;
+        while { component = components.next(); component.is_some() } {
+            if let Some(Component::Normal(path_seg)) = component {
+                match current_dir.find(path_seg)? {
+                    Entry::Dir(dir) => {
+                        current_dir = dir;
+                    },
+                    Entry::File(file) => {
+                        target_file = Some(file);
+                        broken = true;
+                        break;
+                    }
+                }
+            }
+            else {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput, "Canonicalized path is expected."));
+                //panic!("Unexpected component on canonicalized Path."); 
+            }
+        }
+        match target_file {
+            Some(file) => {
+                if components.next().is_some() {
+                    Err(io::Error::new(io::ErrorKind::InvalidInput, "A Component of Path is not a directory."))
+                }
+                else {
+                    Ok(Entry::File(file))
+                }
+            }
+            None => {
+                Ok(Entry::Dir(current_dir))
+            }
+        }
+
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {

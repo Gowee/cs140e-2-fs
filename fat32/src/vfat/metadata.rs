@@ -33,6 +33,22 @@ pub struct Metadata {
     pub modified_time: Timestamp,
 }
 
+pub(super) const ROOTMETADATA: Metadata = Metadata {
+    attributes: Attributes(0x10),
+    created_time: Timestamp {
+        date: Date(0),
+        time: Time(0),
+    },
+    accessed_time: Timestamp {
+        date: Date(0),
+        time: Time(0),
+    },
+    modified_time: Timestamp {
+        date: Date(0),
+        time: Time(0),
+    },
+};
+
 impl From<u16> for Date {
     fn from(raw: u16) -> Date {
         Date(raw)
@@ -42,14 +58,14 @@ impl From<u16> for Date {
 impl From<u16> for Time {
     fn from(raw: u16) -> Time {
         Time(raw)
-    } 
+    }
 }
 
 impl From<(Date, Time)> for Timestamp {
     fn from(date_time: (Date, Time)) -> Timestamp {
         Timestamp {
             date: date_time.0,
-            time: date_time.1
+            time: date_time.1,
         }
     }
 }
@@ -57,7 +73,7 @@ impl From<(Date, Time)> for Timestamp {
 impl From<u8> for Attributes {
     fn from(raw: u8) -> Attributes {
         Attributes(raw)
-    } 
+    }
 }
 
 impl traits::Timestamp for Timestamp {
@@ -197,9 +213,7 @@ impl fmt::Display for Metadata {
         write!(
             f,
             "\nctime: {}\natime: {}\nmtime: {}",
-            self.created_time,
-            self.accessed_time,
-            self.modified_time
+            self.created_time, self.accessed_time, self.modified_time
         )
     }
 }

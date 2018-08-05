@@ -7,7 +7,7 @@ use std::vec;
 
 use traits;
 use util::VecExt;
-use vfat::{Attributes, Date, Metadata, Time, Timestamp};
+use vfat::{Attributes, Date, Metadata, Time, Timestamp, ROOTMETADATA};
 use vfat::{Cluster, Entry, File, Shared, VFat};
 
 #[derive(Debug)]
@@ -26,6 +26,16 @@ impl Dir {
             first_cluster,
             vfat,
         }
+    }
+
+    pub(crate) fn root_from_vfat(vfat: Shared<VFat>) -> Dir {
+        let root_dir_cluster = vfat.borrow().root_dir_cluster;
+        Self::new(
+            String::from(""),
+            ROOTMETADATA,
+            root_dir_cluster,
+            vfat
+        )
     }
 }
 
