@@ -50,8 +50,6 @@ impl VFat {
             data_start_sector: fss as u64 + bpb.number_of_fats as u64 * bpb.sectors_per_fat as u64,
             root_dir_cluster: rdc,
         };
-        //println!("{} {} {}", fss, bpb.number_of_fats, bpb.number_of_sectors_per_fat);
-        // println!("{:#?}\n{:#?}", bpb, vfat);
         Ok(Shared::new(vfat))
     }
 
@@ -87,7 +85,6 @@ impl VFat {
         let mut index = {
             let sector = self.device.get(nsector)?;
             let offset_in_sector = offset % self.bytes_per_sector as usize;
-            println!("{:?}; Sct: {}; ofst: {}-{}", cluster, nsector, offset_in_sector, offset);
             let until = min(buf.len() + offset_in_sector, self.bytes_per_sector as usize);
             &mut buf[..until - offset_in_sector].copy_from_slice(&sector[offset_in_sector..until]);
             nsector += 1;

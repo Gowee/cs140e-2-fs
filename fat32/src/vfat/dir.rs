@@ -35,7 +35,7 @@ impl Dir {
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct VFatRegularDirEntry {
     /// File name: 8 ASCII characters.
     /// A file name may be terminated early using 0x00 or 0x20 characters.
@@ -77,7 +77,7 @@ pub struct VFatRegularDirEntry {
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct VFatLfnDirEntry {
     /// Sequence Number
     ///
@@ -201,9 +201,6 @@ impl iter::Iterator for EntryIter {
                 0xE5 => self.next(), // this is a deleted/unused entry; TODO: should lfn be cleared?
                 raw_seq_num => {
                     if entry.attributes.lfn() {
-                        /* println!("{:?}", unsafe { raw_entry.long_filename });
-                        println!("rsn: {:b}", raw_seq_num);
-                        println!("sn: {:b}", raw_seq_num & 0b00011111); */
                         // VFatLfnDirEntry
                         let seq_num = raw_seq_num & 0b00011111; // Only bits 0-4 is seq num.
                         if !(seq_num >= 0x01 && seq_num <= 0x1F) {
@@ -220,7 +217,6 @@ impl iter::Iterator for EntryIter {
                         }
                         self.next()
                     } else {
-                        // println!("{:?}", unsafe { raw_entry.regular });
                         let entry = unsafe { raw_entry.regular };
                         let mut file_name = match self.lfn {
                             Some(ref lfn) => {

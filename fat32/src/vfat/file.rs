@@ -104,14 +104,12 @@ impl io::Read for File {
             let offset_in_cluster = self.offset as usize % vfat.cluster_size();
             let available_bytes = (self.size - self.offset) as usize;
             let len = min(available_bytes, buf.len());
-            println!("start: {:?} c, {}b,", cluster, offset_in_cluster);
             vfat.read_cluster(
                 cluster.into(),
                 offset_in_cluster,
                 &mut buf[..len],
             )?
         };
-        println!("read bytes: {};", read_bytes);
         self.seek(SeekFrom::Current(read_bytes as i64))?;
         Ok(read_bytes)
     }
