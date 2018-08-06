@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::io;
 use std::mem::size_of;
-use std::path::{Path, Component};
+use std::path::{Component, Path};
 
 use mbr::MasterBootRecord;
 use traits::{BlockDevice, FileSystem};
@@ -47,11 +47,11 @@ impl VFat {
             sectors_per_cluster: spc,
             sectors_per_fat: spf,
             fat_start_sector: fss,
-            data_start_sector: fss as u64 +
-                bpb.number_of_fats as u64 * bpb.number_of_sectors_per_fat as u64,
+            data_start_sector: fss as u64 + bpb.number_of_fats as u64 * bpb.sectors_per_fat as u64,
             root_dir_cluster: rdc,
         };
-        // println!("{:#?}", vfat);
+        //println!("{} {} {}", fss, bpb.number_of_fats, bpb.number_of_sectors_per_fat);
+        // println!("{:#?}\n{:#?}", bpb, vfat);
         Ok(Shared::new(vfat))
     }
 
@@ -76,12 +76,18 @@ impl VFat {
                 "Cluster is bad.",
             ));
         }
-        let mut nsector = self.data_start_sector +
-            (cluster.inner() as u64 - 2) * self.sectors_per_cluster as u64 +
-            offset as u64 / self.bytes_per_sector as u64;
+        let mut nsector = self.data_start_sector
+            + (cluster.inner() as u64).checked_sub(2).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Cluster number should be greater or equal than 2.",
+                )
+            })? * self.sectors_per_cluster as u64
+            + offset as u64 / self.bytes_per_sector as u64;
         let mut index = {
             let sector = self.device.get(nsector)?;
             let offset_in_sector = offset % self.bytes_per_sector as usize;
+            println!("{:?}; Sct: {}; ofst: {}-{}", cluster, nsector, offset_in_sector, offset);
             let until = min(buf.len() + offset_in_sector, self.bytes_per_sector as usize);
             &mut buf[..until - offset_in_sector].copy_from_slice(&sector[offset_in_sector..until]);
             nsector += 1;
@@ -94,6 +100,7 @@ impl VFat {
 
         while index < total {
             index += self.device.read_sector(nsector, &mut buf[index..])?;
+            nsector += 1;
         }
         Ok(total)
     }
@@ -153,44 +160,49 @@ impl<'a> FileSystem for &'a Shared<VFat> {
         // let mut componenets = canon_path.as_path().components();
         let mut components = path.as_ref().components();
         if components.next() != Some(Component::RootDir) {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "File path should start from root."));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "File path should start from root.",
+            ));
         }
         let mut current_dir = Dir::root_from_vfat(self.clone());
         let mut target_file = None;
         let mut component;
-        let mut broken = false;
-        while { component = components.next(); component.is_some() } {
+        while {
+            component = components.next();
+            component.is_some()
+        } {
             if let Some(Component::Normal(path_seg)) = component {
                 match current_dir.find(path_seg)? {
                     Entry::Dir(dir) => {
                         current_dir = dir;
-                    },
+                    }
                     Entry::File(file) => {
                         target_file = Some(file);
-                        broken = true;
                         break;
                     }
                 }
-            }
-            else {
-                return Err(io::Error::new(io::ErrorKind::InvalidInput, "Canonicalized path is expected."));
-                //panic!("Unexpected component on canonicalized Path."); 
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Canonicalized path is expected.",
+                ));
+                //panic!("Unexpected component on canonicalized Path.");
             }
         }
         match target_file {
             Some(file) => {
                 if components.next().is_some() {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "A Component of Path is not a directory."))
-                }
-                else {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "A Component of Path is not a directory.",
+                    ))
+                } else {
                     Ok(Entry::File(file))
                 }
             }
-            None => {
-                Ok(Entry::Dir(current_dir))
-            }
+            None => Ok(Entry::Dir(current_dir)),
         }
-
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {

@@ -95,18 +95,23 @@ impl io::Write for File {
 impl io::Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         // io::Read does not need all octets are returned at once
+        if self.size == 0 {
+            return Ok(0);
+        }
         let read_bytes = {
             let mut vfat = self.vfat.borrow_mut();
-            let cluster = self.offset / vfat.cluster_size() as u32;
+            let cluster = self.first_cluster.inner() + self.offset / vfat.cluster_size() as u32;
             let offset_in_cluster = self.offset as usize % vfat.cluster_size();
             let available_bytes = (self.size - self.offset) as usize;
             let len = min(available_bytes, buf.len());
+            println!("start: {:?} c, {}b,", cluster, offset_in_cluster);
             vfat.read_cluster(
                 cluster.into(),
                 offset_in_cluster,
                 &mut buf[..len],
             )?
         };
+        println!("read bytes: {};", read_bytes);
         self.seek(SeekFrom::Current(read_bytes as i64))?;
         Ok(read_bytes)
     }

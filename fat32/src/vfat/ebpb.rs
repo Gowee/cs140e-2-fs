@@ -14,7 +14,8 @@ pub struct BiosParameterBlock {
     pub max_no_of_director_entries: u16,
     pub total_logical_sectors: u16,
     pub fat_id: u8,
-    pub number_of_sectors_per_fat: u16,
+    /// Number of sectors per FAT. 0 for FAT32; use 32-bit value at 36 instead).
+    pub _number_of_sectors_per_fat: u16,
     pub number_of_sectors_per_track: u16,
     pub number_of_heads_or_sides: u16,
     pub number_of_hidden_sectors: u32,
@@ -75,7 +76,7 @@ impl fmt::Debug for BiosParameterBlock {
             .field("max_no_of_director_entries", &self.max_no_of_director_entries)
             .field("total_logical_sectors", &self.total_logical_sectors)
             .field("fat_id", &self.fat_id)
-            .field("number_of_sectors_per_fat", &self.number_of_sectors_per_fat)
+            // .field("_number_of_sectors_per_fat", &self._number_of_sectors_per_fat)
             .field("number_of_sectors_per_track", &self.number_of_sectors_per_track)
             .field("number_of_heads_or_sides", &self.number_of_heads_or_sides)
             .field("number_of_hidden_sectors", &self.number_of_hidden_sectors)

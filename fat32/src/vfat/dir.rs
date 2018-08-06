@@ -30,17 +30,12 @@ impl Dir {
 
     pub(crate) fn root_from_vfat(vfat: Shared<VFat>) -> Dir {
         let root_dir_cluster = vfat.borrow().root_dir_cluster;
-        Self::new(
-            String::from(""),
-            ROOTMETADATA,
-            root_dir_cluster,
-            vfat
-        )
+        Self::new(String::from(""), ROOTMETADATA, root_dir_cluster, vfat)
     }
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VFatRegularDirEntry {
     /// File name: 8 ASCII characters.
     /// A file name may be terminated early using 0x00 or 0x20 characters.
@@ -82,7 +77,7 @@ pub struct VFatRegularDirEntry {
 }
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VFatLfnDirEntry {
     /// Sequence Number
     ///
@@ -94,7 +89,7 @@ pub struct VFatLfnDirEntry {
     seq_num: u8,
     /// Name characters (five UCS-2 (subset of UTF-16) characters)
     /// A file name may be terminated early using 0x00 or 0xFF characters.
-    name_characters_1: [u8; 10],
+    name_characters_1: [u16; 5],
     /// Attributes (always 0x0F). Used to determine if a directory entry is an LFN entry.
     attributes: Attributes,
     /// Type
@@ -105,12 +100,12 @@ pub struct VFatLfnDirEntry {
     checksum: u8,
     /// Second set of name characters (six UCS-2 characters).
     /// Same early termination conditions apply.
-    name_characters_2: [u8; 12],
+    name_characters_2: [u16; 6],
     /// Always 0x0000 for an LFN.
     __r0: u16,
     /// Third set of name characters (two UCS-2 characters).
     /// Same early termination conditions apply.
-    name_characters_3: [u8; 4],
+    name_characters_3: [u16; 2],
 }
 
 #[repr(C, packed)]
@@ -182,7 +177,7 @@ impl traits::Dir for Dir {
 pub struct EntryIter {
     raw_entries: vec::IntoIter<VFatDirEntry>,
     vfat: Shared<VFat>,
-    lfn: Option<[[u8; 26]; 0x1F]>,
+    lfn: Option<[[u16; 13]; 0x1F]>,
 }
 
 impl EntryIter {
@@ -204,53 +199,66 @@ impl iter::Iterator for EntryIter {
             match entry.seq_num {
                 0x00 => None,        // the previous entry was the last entry
                 0xE5 => self.next(), // this is a deleted/unused entry; TODO: should lfn be cleared?
-                seq_num => {
+                raw_seq_num => {
                     if entry.attributes.lfn() {
+                        /* println!("{:?}", unsafe { raw_entry.long_filename });
+                        println!("rsn: {:b}", raw_seq_num);
+                        println!("sn: {:b}", raw_seq_num & 0b00011111); */
                         // VFatLfnDirEntry
+                        let seq_num = raw_seq_num & 0b00011111; // Only bits 0-4 is seq num.
                         if !(seq_num >= 0x01 && seq_num <= 0x1F) {
                             // invalid seq_num
                             panic!("Unexpected sequence number: {}.", seq_num);
                         }
                         let entry = unsafe { raw_entry.long_filename };
-                        let mut lfn = self.lfn.get_or_insert([[0x00; 26]; 0x1F])[seq_num as usize];
-                        lfn[0..10].copy_from_slice(&entry.name_characters_1);
-                        lfn[10..22].copy_from_slice(&entry.name_characters_2);
-                        lfn[22..26].copy_from_slice(&entry.name_characters_3);
+                        {
+                            let lfn = self.lfn.get_or_insert([[0x0000; 13]; 0x1F]);
+                            let lfn = &mut lfn[(seq_num - 1) as usize];
+                            lfn[0..5].copy_from_slice(&entry.name_characters_1);
+                            lfn[5..11].copy_from_slice(&entry.name_characters_2);
+                            lfn[11..13].copy_from_slice(&entry.name_characters_3);
+                        }
                         self.next()
                     } else {
+                        // println!("{:?}", unsafe { raw_entry.regular });
                         let entry = unsafe { raw_entry.regular };
                         let mut file_name = match self.lfn {
-                            None => String::from(""),
                             Some(ref lfn) => {
-                                let raw_lfn: Vec<u8> = lfn
+                                let raw_lfn: Vec<u16> = lfn
                                     .into_iter()
                                     .flatten()
                                     .map(|c| *c)
-                                    .take_while(|&c| c != 0x00 && c != 0xFF)
+                                    .take_while(|&c| c != 0x0000 && c != 0xFFFF) // TODO: right?
                                     .collect();
-                                let raw_lfn: Vec<u16> = unsafe { raw_lfn.cast() }; // TODO:
+                                // u16 is required here and in any other related place!
+                                // Vec<u8> cannot be casted to Vec<u16> due to alignment issues.
+                                // let raw_lfn: Vec<u16> = unsafe { raw_lfn.cast() };
                                 String::from_utf16_lossy(raw_lfn.as_slice())
+                            }
+                            None => {
+                                // It seems that: When there is LFN, 
+                                // the regular file name should be ignored regardlessly.
+                                let name: Vec<u8> = entry
+                                    .name
+                                    .iter()
+                                    .map(|c| *c)
+                                    .take_while(|&c| c != 0x00 && c != 0x20)
+                                    .collect();
+                                let mut file_name = String::from_utf8_lossy(&name).into_owned();
+                                let extension: Vec<u8> = entry
+                                    .extension
+                                    .iter()
+                                    .map(|c| *c)
+                                    .take_while(|&c| c != 0x00 && c != 0x20)
+                                    .collect();
+                                if !extension.is_empty() {
+                                    file_name.push_str(".");
+                                    file_name.push_str({ &String::from_utf8_lossy(&extension) });
+                                }
+                                file_name
                             }
                         };
                         self.lfn = None; // clear lfn
-
-                        let name: Vec<u8> = entry
-                            .name
-                            .iter()
-                            .map(|c| *c)
-                            .take_while(|&c| c != 0x00 && c != 0x20)
-                            .collect();
-                        file_name.push_str(&String::from_utf8_lossy(&name));
-                        let extension: Vec<u8> = entry
-                            .extension
-                            .iter()
-                            .map(|c| *c)
-                            .take_while(|&c| c != 0x00 && c != 0x20)
-                            .collect();
-                        if !extension.is_empty() {
-                            file_name.push_str(".");
-                        }
-                        file_name.push_str({ &String::from_utf8_lossy(&extension) });
 
                         let metadata = Metadata {
                             attributes: entry.attributes,

@@ -81,7 +81,7 @@ impl traits::Timestamp for Timestamp {
     ///
     /// The year is not offset. 2009 is 2009.
     fn year(&self) -> usize {
-        (self.date.0 > 9) as usize + 1980 // Is the endianness right?
+        (self.date.0 >> 9) as usize + 1980 // Is the endianness right?
     }
 
     /// The calendar month, starting at 1 for January. Always in range [1, 12].
@@ -103,7 +103,7 @@ impl traits::Timestamp for Timestamp {
 
     /// The minute. Always in range [0, 60).
     fn minute(&self) -> u8 {
-        ((self.time.0 & (0b11111 << 5)) >> 5) as u8
+        ((self.time.0 & (0b111111 << 5)) >> 5) as u8
     }
 
     /// The second. Always in range [0, 60).
@@ -121,32 +121,34 @@ impl Attributes {
     const ARCHIVE: u8 = 0x20;
     const LFN: u8 = Self::READ_ONLY | Self::HIDDEN | Self::SYSTEM | Self::VOLUME_ID;
 
+    // `val & mask == mask` is necessary!
+    // barely `!= 0` does not work because there is mask like 0x10 which has two or more bits set
     pub fn read_only(&self) -> bool {
-        self.0 ^ Self::READ_ONLY == 0
+        self.0 & Self::READ_ONLY == Self::READ_ONLY
     }
 
     pub fn hidden(&self) -> bool {
-        self.0 ^ Self::HIDDEN == 0
+        self.0 & Self::HIDDEN == Self::HIDDEN
     }
 
     pub fn system(&self) -> bool {
-        self.0 ^ Self::SYSTEM == 0
+        self.0 & Self::SYSTEM == Self::SYSTEM
     }
 
     pub fn volume_id(&self) -> bool {
-        self.0 ^ Self::VOLUME_ID == 0
+        self.0 & Self::VOLUME_ID == Self::VOLUME_ID
     }
 
     pub fn directory(&self) -> bool {
-        self.0 ^ Self::DIRECTORY == 0
+        self.0 & Self::DIRECTORY == Self::DIRECTORY
     }
 
     pub fn archive(&self) -> bool {
-        self.0 ^ Self::ARCHIVE == 0
+        self.0 & Self::ARCHIVE == Self::ARCHIVE
     }
 
     pub fn lfn(&self) -> bool {
-        self.0 ^ Self::LFN == 0
+        self.0 & Self::LFN == Self::LFN
     }
 }
 

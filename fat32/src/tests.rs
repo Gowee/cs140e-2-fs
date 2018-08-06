@@ -286,6 +286,7 @@ fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
             Ok(n) => {
                 hasher.write(&buffer[..n]);
                 bytes_read += n as u64;
+                //println!("{}", &String::from_utf8_lossy(buffer.as_mut_slice()));
             }
             Err(e) => panic!("failed to read file: {:?}", e),
         }
@@ -320,8 +321,12 @@ fn hash_files_recursive<P: AsRef<Path>>(
         if entry.is_file() && !entry.name().starts_with(".BC.T") {
             use std::fmt::Write;
             let file = entry.into_file().unwrap();
+            if path.to_str() != Some("/NOTES/LEC2/CODE/CODE.PDF") {
+                //continue;
+            }
             if file.size() < (1 << 20) {
                 write!(hash, "{}: ", path.display())?;
+                println!("({} bytes)", file.size());
                 hash_file(hash, file).expect("successful hash");
                 hash.push('\n');
             }
