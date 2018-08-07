@@ -19,16 +19,16 @@ impl traits::Entry for Entry {
     /// The name of the file or directory corresponding to this entry.
     fn name(&self) -> &str {
         match self {
-            Entry::File(file) => &file.name,
-            Entry::Dir(dir) => &dir.name
+            &Entry::File(ref file) => &file.name,
+            &Entry::Dir(ref dir) => &dir.name
         }
     }
 
     /// The metadata associated with the entry.
     fn metadata(&self) -> &Self::Metadata {
         match self {
-            Entry::File(file) => &file.metadata,
-            Entry::Dir(dir) => &dir.metadata
+            &Entry::File(ref file) => &file.metadata,
+            &Entry::Dir(ref dir) => &dir.metadata
         }
     }
 
@@ -36,7 +36,7 @@ impl traits::Entry for Entry {
     /// Otherwise returns `None`.
     fn as_file(&self) -> Option<&Self::File> {
         match self {
-            Entry::File(ref file) => Some(file),
+            &Entry::File(ref file) => Some(file),
             _ => None
         }
     }
@@ -45,7 +45,7 @@ impl traits::Entry for Entry {
     /// directory. Otherwise returns `None`.
     fn as_dir(&self) -> Option<&Self::Dir> {
         match self {
-            Entry::Dir(ref dir) => Some(dir),
+            &Entry::Dir(ref dir) => Some(dir),
             _ => None
         }
     }

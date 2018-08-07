@@ -1,0 +1,1 @@
+For example, the signature of function may be incorrect. In detail, the nubmer and type of parameters are possibly wrong. In a Rust crate, the rust compiler will do all necessary checks and ensure no problems of thess kinds would exist. rustc can get to known the exact signature of functions from a external crate but it cannot be done for a foreign code.

@@ -1,0 +1,2 @@
+A Rust project may indirectly use the different versions of a same project. Also in different namespaces (mods), there may exist functions with the same name. Without mangling, they may conflict. It seems that C project cannot do that because it does not support these features.
+

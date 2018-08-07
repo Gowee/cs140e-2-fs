@@ -222,7 +222,7 @@ impl iter::Iterator for EntryIter {
                             Some(ref lfn) => {
                                 let raw_lfn: Vec<u16> = lfn
                                     .into_iter()
-                                    .flatten()
+                                    .flat_map(|e| e)
                                     .map(|c| *c)
                                     .take_while(|&c| c != 0x0000 && c != 0xFFFF) // TODO: right?
                                     .collect();
