@@ -1,11 +1,9 @@
 use std::cmp::min;
 use std::io;
-use std::mem::size_of;
 use std::path::{Component, Path};
 
 use mbr::MasterBootRecord;
 use traits::{BlockDevice, FileSystem};
-use util::SliceExt;
 use vfat::{BiosParameterBlock, CachedDevice, Partition};
 use vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Shared, Status};
 
@@ -74,14 +72,14 @@ impl VFat {
                 "Cluster is bad.",
             ));
         }
-        let mut nsector = self.data_start_sector
-            + (cluster.inner() as u64).checked_sub(2).ok_or_else(|| {
+        let mut nsector = self.data_start_sector +
+            (cluster.inner() as u64).checked_sub(2).ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "Cluster number should be greater or equal than 2.",
                 )
-            })? * self.sectors_per_cluster as u64
-            + offset as u64 / self.bytes_per_sector as u64;
+            })? * self.sectors_per_cluster as u64 +
+            offset as u64 / self.bytes_per_sector as u64;
         let mut index = {
             let sector = self.device.get(nsector)?;
             let offset_in_sector = offset % self.bytes_per_sector as usize;
@@ -168,7 +166,8 @@ impl<'a> FileSystem for &'a Shared<VFat> {
         while {
             component = components.next();
             component.is_some()
-        } {
+        }
+        {
             if let Some(Component::Normal(path_seg)) = component {
                 match current_dir.find(path_seg)? {
                     Entry::Dir(dir) => {

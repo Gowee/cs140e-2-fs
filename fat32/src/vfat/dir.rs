@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::char::decode_utf16;
 use std::ffi::OsStr;
 use std::io;
 use std::iter;
@@ -7,7 +5,7 @@ use std::vec;
 
 use traits;
 use util::VecExt;
-use vfat::{Attributes, Date, Metadata, Time, Timestamp, ROOTMETADATA};
+use vfat::{Attributes, Date, Metadata, Time, ROOTMETADATA};
 use vfat::{Cluster, Entry, File, Shared, VFat};
 
 #[derive(Debug)]
@@ -166,9 +164,10 @@ impl traits::Dir for Dir {
     /// Returns an interator over the entries in this directory.
     fn entries(&self) -> io::Result<Self::Iter> {
         let mut buf = Vec::new();
-        self.vfat
-            .borrow_mut()
-            .read_chain(self.first_cluster, &mut buf)?;
+        self.vfat.borrow_mut().read_chain(
+            self.first_cluster,
+            &mut buf,
+        )?;
         let raw_entries: Vec<VFatDirEntry> = unsafe { buf.cast() }; // TODO: works or not?
         Ok(EntryIter::new(raw_entries.into_iter(), self.vfat.clone()))
     }
@@ -232,7 +231,7 @@ impl iter::Iterator for EntryIter {
                                 String::from_utf16_lossy(raw_lfn.as_slice())
                             }
                             None => {
-                                // It seems that: When there is LFN, 
+                                // It seems that: When there is LFN,
                                 // the regular file name should be ignored regardlessly.
                                 let name: Vec<u8> = entry
                                     .name
@@ -249,7 +248,9 @@ impl iter::Iterator for EntryIter {
                                     .collect();
                                 if !extension.is_empty() {
                                     file_name.push_str(".");
-                                    file_name.push_str({ &String::from_utf8_lossy(&extension) });
+                                    file_name.push_str({
+                                        &String::from_utf8_lossy(&extension)
+                                    });
                                 }
                                 file_name
                             }
@@ -263,8 +264,8 @@ impl iter::Iterator for EntryIter {
                             modified_time: (entry.mdate, entry.mtime).into(),
                         };
 
-                        let first_cluster = (((entry.first_cluster_higher_bits as u32) << 16)
-                            | entry.first_cluster_lower_bits as u32)
+                        let first_cluster = (((entry.first_cluster_higher_bits as u32) << 16) |
+                                                 entry.first_cluster_lower_bits as u32)
                             .into();
                         Some(if metadata.attributes.directory() {
                             Entry::Dir(Dir::new(

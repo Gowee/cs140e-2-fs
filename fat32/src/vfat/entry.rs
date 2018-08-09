@@ -1,5 +1,5 @@
 use traits;
-use vfat::{Cluster, Dir, File, Metadata};
+use vfat::{Dir, File, Metadata};
 
 // TODO: You may need to change this definition.
 #[derive(Debug)]
@@ -20,7 +20,7 @@ impl traits::Entry for Entry {
     fn name(&self) -> &str {
         match self {
             &Entry::File(ref file) => &file.name,
-            &Entry::Dir(ref dir) => &dir.name
+            &Entry::Dir(ref dir) => &dir.name,
         }
     }
 
@@ -28,7 +28,7 @@ impl traits::Entry for Entry {
     fn metadata(&self) -> &Self::Metadata {
         match self {
             &Entry::File(ref file) => &file.metadata,
-            &Entry::Dir(ref dir) => &dir.metadata
+            &Entry::Dir(ref dir) => &dir.metadata,
         }
     }
 
@@ -37,7 +37,7 @@ impl traits::Entry for Entry {
     fn as_file(&self) -> Option<&Self::File> {
         match self {
             &Entry::File(ref file) => Some(file),
-            _ => None
+            _ => None,
         }
     }
 
@@ -46,7 +46,7 @@ impl traits::Entry for Entry {
     fn as_dir(&self) -> Option<&Self::Dir> {
         match self {
             &Entry::Dir(ref dir) => Some(dir),
-            _ => None
+            _ => None,
         }
     }
 
@@ -55,7 +55,7 @@ impl traits::Entry for Entry {
     fn into_file(self) -> Option<Self::File> {
         match self {
             Entry::File(file) => Some(file),
-            _ => None
+            _ => None,
         }
     }
 
@@ -64,7 +64,7 @@ impl traits::Entry for Entry {
     fn into_dir(self) -> Option<Self::Dir> {
         match self {
             Entry::Dir(dir) => Some(dir),
-            _ => None
+            _ => None,
         }
     }
 }

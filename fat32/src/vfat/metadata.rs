@@ -215,7 +215,9 @@ impl fmt::Display for Metadata {
         write!(
             f,
             "\nctime: {}\natime: {}\nmtime: {}",
-            self.created_time, self.accessed_time, self.modified_time
+            self.created_time,
+            self.accessed_time,
+            self.modified_time
         )
     }
 }

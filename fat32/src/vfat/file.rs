@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::io::{self, Seek, SeekFrom};
 
 use traits;
@@ -83,7 +83,7 @@ impl io::Seek for File {
 }
 
 impl io::Write for File {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         unimplemented!("Read-only!")
     }
 
